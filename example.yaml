@@ -1,0 +1,13 @@
+title: "A Test"
+artist: "Tony the tester"
+date: "2017-01-14"
+comment: "This is comment"
+language: "de"
+
+cover: "cover.jpg"
+
+chapters:
+    "0:00:00.000" : "Intro"
+    "0:01:00.000" : "First Minute"
+    "0:02:10.000" : "Two Minutes and ten seconds"
+    "0:02:20.420" : "Two Minutes and twenty seconds, and then some"
