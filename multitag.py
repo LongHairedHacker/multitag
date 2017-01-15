@@ -3,15 +3,18 @@
 import sys
 import os
 import subprocess
+import base64
 
 import yaml
 
 import mutagen
-from mutagen.id3 import ID3, CTOC, CHAP, TIT2, CTOCFlags
+from mutagen.id3 import ID3, CTOC, CHAP, TIT2, CTOCFlags, APIC
 from mutagen.easyid3 import EasyID3
 from mutagen.easymp4 import EasyMP4
 
+
 YAML_KEYS = ["title", "artist", "date", "comment", "cover", "language", "chapters"]
+
 
 def time_to_milliseconds(time_str):
     time_parts = list(map(lambda t: float(t), time_str.split(':')))
@@ -22,6 +25,7 @@ def time_to_milliseconds(time_str):
     time = int((time_parts[-1] + time) * 1000)
 
     return time
+
 
 def read_tag_file(chapter_file):
     if not os.path.isfile(chapter_file):
@@ -48,6 +52,16 @@ def make_mp3_tags(tags, path):
     id3['language'] = tags['language']
 
     id3.save()
+
+
+def make_mp3_cover(cover, path):
+    audio = mutagen.File(path)
+
+    jpeg_data = open(cover, "rb").read()
+    image_tag = APIC(3, 'image/jpeg', 3, 'Cover', jpeg_data)
+    audio[image_tag.HashKey] = image_tag
+
+    audio.save()
 
 
 def make_mp3_chapters(chapters, path):
@@ -88,6 +102,17 @@ def make_mp4_tags(tags, path):
 
     mp4.save()
 
+
+def make_mp4_cover(cover, path):
+    jpeg_data = open(cover, "rb").read()
+    cover = mutagen.mp4.MP4Cover(jpeg_data)
+
+    mp4 = mutagen.mp4.MP4(path)
+    mp4.tags['covr'] = [cover]
+
+    mp4.save()
+
+
 def make_mp4_chapters(chapters, path):
     chap_path = "%s.chapters.txt" % os.path.splitext(path)[0]
     chapter_file = open(chap_path, 'w')
@@ -100,6 +125,8 @@ def make_mp4_chapters(chapters, path):
 
     os.remove(chap_path)
 
+
+
 def make_ogg_tags(tags, audio):
     audio.tags['TITLE'] = tags['title']
     audio.tags['ARTIST'] = tags['artist']
@@ -109,14 +136,26 @@ def make_ogg_tags(tags, audio):
 
     audio.save()
 
-def make_ogg_chapters(chapters, audio):
 
+def make_ogg_cover(cover, audio):
+    jpeg_data = open(cover, "rb").read()
+
+    audio['coverartmime'] = 'image/jpeg'
+    audio['coverartdescription'] = 'Cover'
+    audio['coverarttype'] = '3'
+    audio['coverart'] = base64.b64encode(jpeg_data).decode("utf-8") 
+
+    audio.save()
+
+
+def make_ogg_chapters(chapters, audio):
     for i in range(0, len(chapters)):
         num = str(i).zfill(3)
         audio.tags['CHAPTER%s' % num] = chapters[i][0]
         audio.tags['CHAPTER%sNAME' % num] = chapters[i][1]
 
     audio.save()
+
 
 
 def main():
@@ -130,6 +169,12 @@ def main():
 
     tags = read_tag_file(tag_file_path)
 
+    if not os.path.isfile(tags['cover']):
+        raise RuntimeError("%s does not exist" % cover)
+
+    if os.path.splitext(tags['cover'])[1] != ".jpg":
+        raise RuntimeError("Only jpgs are supported as covers")
+
     for path in media_files:
         print("Adding chapters to: %s" % path)
 
@@ -137,12 +182,15 @@ def main():
 
         if isinstance(audio, mutagen.mp3.MP3):
             make_mp3_tags(tags, path)
+            make_mp3_cover(tags['cover'], path)
             make_mp3_chapters(tags['chapters'], path)
         elif isinstance(audio, mutagen.mp4.MP4):
             make_mp4_tags(tags, path)
+            make_mp4_cover(tags['cover'], path)
             make_mp4_chapters(tags['chapters'], path)
         elif isinstance(audio, mutagen.oggvorbis.OggVorbis) or isinstance(audio, mutagen.oggopus.OggOpus):
             make_ogg_tags(tags, audio)
+            make_ogg_cover(tags['cover'], audio)
             make_ogg_chapters(tags['chapters'], audio)
         else:
             print("Skipping unsupported file: %s" % path)

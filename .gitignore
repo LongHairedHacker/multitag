@@ -1,0 +1,5 @@
+*.ogg
+*.opus
+*.mp3
+*.mp4
+/virtenv
