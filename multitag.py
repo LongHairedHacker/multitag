@@ -5,6 +5,7 @@ import os
 import subprocess
 import base64
 
+import codecs
 import yaml
 
 import mutagen
@@ -115,7 +116,7 @@ def make_mp4_cover(cover, path):
 
 def make_mp4_chapters(chapters, path):
     chap_path = "%s.chapters.txt" % os.path.splitext(path)[0]
-    chapter_file = open(chap_path, 'w')
+    chapter_file = codecs.open(chap_path, 'w', 'utf-8')
     lines = [u"%s %s\n" % (start_time, name) for start_time, name in chapters]
     chapter_file.writelines(lines)
     chapter_file.close()
@@ -143,7 +144,7 @@ def make_ogg_cover(cover, audio):
     audio['coverartmime'] = 'image/jpeg'
     audio['coverartdescription'] = 'Cover'
     audio['coverarttype'] = '3'
-    audio['coverart'] = base64.b64encode(jpeg_data).decode("utf-8") 
+    audio['coverart'] = base64.b64encode(jpeg_data).decode("utf-8")
 
     audio.save()
 
